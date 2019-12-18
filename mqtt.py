@@ -51,12 +51,6 @@ try:
         elif a is "4":
             c = input("command: ")
             client.publish("led/rgb", "%s"%(c))
-        elif a is "5":
-            for i in range(0,100):
-                client.publish("led/rgb", "1")
-                time.sleep(0.03)
-                client.publish("led/rgb", "0")
-                time.sleep(0.03)
     
 except KeyboardInterrupt:
 
