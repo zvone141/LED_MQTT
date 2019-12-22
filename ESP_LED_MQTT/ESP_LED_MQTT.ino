@@ -1,16 +1,19 @@
+#include "config.h"
 #include <ESP8266WiFi.h>
 #include <FastLED.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <MQTT.h>
 
-#define NUM_LEDS 40
-#define DATA_PIN 5 //D1
-
-#define CLIENT_ID "client3"
-#define TOPIC "led/rgb"
-
 String wifiName = "LED";
 byte arrData[10];
+byte espMAC[6];
+
+uint16_t curLimit = 13000;
+uint16_t ledLen = 50;
+
+char clientID[17];
 
 CRGB leds[NUM_LEDS];
 
@@ -20,30 +23,46 @@ void myDisconnectedCb();
 void myConnectedCb();
 
 
-
-
-// create MQTT
-MQTT myMqtt(CLIENT_ID, "nektar.l-tek.io", 8192);
-
-
-const char* ssid     = "L-Tek_FF";
-const char* password = "fireflytag";
-
+// init MQTT
+MQTT myMqtt(MQTT_CLIENT_ID, MQTT_SERVER, MQTT_PORT);
 
 WiFiClient espClient;
+
+//custom parameters for WiFiManager
+bool shouldSaveConfig = false;
+char ledLenStr[5];
+WiFiManagerParameter custom_led_len("ledLen", "Nr of leds to control", ledLenStr, 5);
 
 //
 void setup() {
   Serial.begin(115200);
   delay(1000);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  Serial.println();
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  WiFi.macAddress(espMAC);
+  sprintf(clientID, "%s%02x%02x%02x%02x%02x%02x\0", MQTT_CLIENT_ID, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
+  myMqtt.setClientId(clientID);
+  Serial.print("clientID: ");
+  Serial.println(clientID);
 
   WiFiManager wifiManager;
-  //WiFi.begin(ssid, password);
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.addParameter(&custom_led_len);
+  wifiManager.setTimeout(600);
+  while(!wifiManager.autoConnect(clientID, AP_PASS)) {
+    //Serial.println("Failed to connect and hit timeout!");
+    delay(3000);
+  }
+
+  if(shouldSaveConfig){
+    strcpy(ledLenStr, custom_led_len.getValue());
+    ledLen = atoi(ledLenStr);
+    Serial.println("Length of led strip");
+    Serial.println(ledLenStr);
+    Serial.println(ledLen);
+    shouldSaveConfig = false;
+  }
+  /*WiFi.begin(ssid, password);
   
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -54,31 +73,33 @@ void setup() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-
+  */
 
   Serial.println("Connecting to MQTT server");  
 
   // setup callbacks
 
-  myMqtt.setUserPwd("test","test");
+  myMqtt.setUserPwd(MQTT_USER,MQTT_PASS);
   
   myMqtt.onConnected(myConnectedCb);
   myMqtt.onDisconnected(myDisconnectedCb);
   myMqtt.onPublished(myPublishedCb);
   myMqtt.onData(myDataCb);
   
-  Serial.println("connect mqtt...");
+  Serial.println("connecting mqtt server...");
   myMqtt.connect();
 
   Serial.println("subscribe to topic...");
-  myMqtt.subscribe(TOPIC);
+  myMqtt.subscribe(CMD_TOPIC);
 
   delay(10);
 
-  wifiManager.autoConnect(wifiName.c_str());
+  FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, NUM_LEDS);
 
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.setMaxPowerInVoltsAndMilliamps(5,2500);
+  if(curLimit > MAX_CUR){
+    curLimit = MAX_CUR;
+  }
+  FastLED.setMaxPowerInVoltsAndMilliamps(5,curLimit);
 
   arrData[0] = 3; // go to standby
   
@@ -86,6 +107,31 @@ void setup() {
 
 //
 void loop() {
+  if(digitalRead(BUTTON_PIN) == LOW){
+    WiFi.disconnect(true);
+    WiFiManager wifiManager;
+    wifiManager.setSaveConfigCallback(saveConfigCallback);
+    wifiManager.addParameter(&custom_led_len);
+    wifiManager.setTimeout(600);
+    wifiManager.startConfigPortal(clientID, AP_PASS);
+
+    if(shouldSaveConfig){
+      strcpy(ledLenStr, custom_led_len.getValue());
+      ledLen = atoi(ledLenStr);
+      Serial.println("Length of led strip");
+      Serial.println(ledLenStr);
+      Serial.println(ledLen);
+      shouldSaveConfig = false;
+    }
+  }
+  handle_LEDs();
+}
+
+
+/*
+ * 
+ */ 
+void handle_LEDs(){
   switch (arrData[0]) {
       case 0: // LED OFF
         LEDsOFF();
@@ -156,11 +202,12 @@ void loop() {
         break;
   }
 }
+//callback of WiFiManager AP when custom parameters have changed
+void saveConfigCallback () {
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
 
-
-/*
- * 
- */ 
 void myConnectedCb()
 {
   Serial.println("connected to MQTT server");
