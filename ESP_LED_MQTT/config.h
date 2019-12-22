@@ -1,8 +1,8 @@
 // MQTT server settings
-#define MQTT_SERVER "nektar.l-tek.io"
-#define MQTT_PORT 8192
-#define MQTT_USER "test"
-#define MQTT_PASS "test"
+#define MQTT_SERVER "test.mosquitto.org"
+#define MQTT_PORT 1883
+#define MQTT_USER ""
+#define MQTT_PASS ""
 #define MQTT_CLIENT_ID "led-" //this is just a prefix to which ESP MAC address is added, this will also be used as a name of the AP to connect ESP to the network
 
 // MQTT pub/sub topics
