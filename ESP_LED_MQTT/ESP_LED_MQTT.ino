@@ -1,12 +1,20 @@
+#define CUSTOM_CONFIG  //if you want to use default config comment this line
+
+#ifdef CUSTOM_CONFIG
+#include "custom_config.h"
+#else
 #include "config.h"
+#endif
+
 #include <ESP8266WiFi.h>
 #include <FastLED.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <MQTT.h>
+#include "ESP_EEPROM.h"
 
-String wifiName = "LED";
+
 byte arrData[10];
 byte espMAC[6];
 
@@ -14,6 +22,8 @@ uint16_t curLimit = 13000;
 uint16_t ledLen = 50;
 
 char clientID[17];
+char response_topic[22];
+char status_topic[24];
 
 CRGB leds[NUM_LEDS];
 
@@ -26,7 +36,7 @@ void myConnectedCb();
 // init MQTT
 MQTT myMqtt(MQTT_CLIENT_ID, MQTT_SERVER, MQTT_PORT);
 
-WiFiClient espClient;
+//WiFiClient espClient;
 
 //custom parameters for WiFiManager
 bool shouldSaveConfig = false;
@@ -41,25 +51,30 @@ void setup() {
 
   WiFi.macAddress(espMAC);
   sprintf(clientID, "%s%02x%02x%02x%02x%02x%02x\0", MQTT_CLIENT_ID, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
+  sprintf(response_topic, "%s%02x%02x%02x%02x%02x%02x\0", RESPONSE_TOPIC, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
+  sprintf(status_topic, "%s%02x%02x%02x%02x%02x%02x\0", STATUS_TOPIC, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
+
   myMqtt.setClientId(clientID);
   Serial.print("clientID: ");
   Serial.println(clientID);
+  Serial.println(response_topic);
+  Serial.println(status_topic);
+
 
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&custom_led_len);
-  wifiManager.setTimeout(600);
+  wifiManager.setTimeout(600); // ESP closes AP after 10mins and continues operation
+  wifiManager.setConnectTimeout(20); // this parameter is useful for when device can not get IP from router, if for instance all IPs are taken
   while(!wifiManager.autoConnect(clientID, AP_PASS)) {
     //Serial.println("Failed to connect and hit timeout!");
     delay(3000);
   }
 
   if(shouldSaveConfig){
-    strcpy(ledLenStr, custom_led_len.getValue());
-    ledLen = atoi(ledLenStr);
-    Serial.println("Length of led strip");
-    Serial.println(ledLenStr);
-    Serial.println(ledLen);
+    //strcpy(ledLenStr, custom_led_len.getValue());
+    saveToEEPROM(custom_led_len.getValue(), ledLenStr, nrLedsLen, nrLedsAddr);
+    commitChangesToEEPROM();
     shouldSaveConfig = false;
   }
   /*WiFi.begin(ssid, password);
@@ -92,9 +107,12 @@ void setup() {
   Serial.println("subscribe to topic...");
   myMqtt.subscribe(CMD_TOPIC);
 
-  delay(10);
+  //myMqtt.publish(status_topic, "led strip connected");
 
-  FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, NUM_LEDS);
+  delay(10);
+  memcpy(ledLenStr, readFromEEPROM(nrLedsLen,nrLedsAddr),nrLedsLen);
+  ledLen = atoi(ledLenStr);
+  FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, ledLen);
 
   if(curLimit > MAX_CUR){
     curLimit = MAX_CUR;
@@ -112,16 +130,18 @@ void loop() {
     WiFiManager wifiManager;
     wifiManager.setSaveConfigCallback(saveConfigCallback);
     wifiManager.addParameter(&custom_led_len);
-    wifiManager.setTimeout(600);
+    wifiManager.setTimeout(600); // ESP closes AP after 10mins and continues operation
+    wifiManager.setConnectTimeout(20); // this parameter is useful for when device can not get IP from router, if for instance all IPs are taken
     wifiManager.startConfigPortal(clientID, AP_PASS);
 
     if(shouldSaveConfig){
-      strcpy(ledLenStr, custom_led_len.getValue());
+      //strcpy(ledLenStr, custom_led_len.getValue());
+      saveToEEPROM(custom_led_len.getValue(), ledLenStr, nrLedsLen, nrLedsAddr);
+      commitChangesToEEPROM();
+      memcpy(ledLenStr, readFromEEPROM(nrLedsLen,nrLedsAddr),nrLedsLen);
       ledLen = atoi(ledLenStr);
-      Serial.println("Length of led strip");
-      Serial.println(ledLenStr);
-      Serial.println(ledLen);
-      shouldSaveConfig = false;
+      ESP.restart();
+      //shouldSaveConfig = false;
     }
   }
   handle_LEDs();
@@ -138,14 +158,14 @@ void handle_LEDs(){
         arrData[0] = 3; // go to standby
         break;
       case 1: // LED ON (full power white all led's)
-        for(int i = 0; i < NUM_LEDS; i++){
+        for(int i = 0; i < ledLen; i++){
           fill_solid( &(leds[i]), 1 /*number of leds*/, CRGB( 255, 255, 255));
         }
         FastLED.show();
         arrData[0] = 3; // go to standby
         break;
       case 2: // Night mode ON(no blue light)
-        for(int i = 0; i < NUM_LEDS; i++){
+        for(int i = 0; i < ledLen; i++){
           fill_solid( &(leds[i]), 1 /*number of leds*/, CRGB( 255, 255, 0));
         }
         FastLED.show();
@@ -181,16 +201,16 @@ void handle_LEDs(){
         break;
       case 12: //set all LED's to whatever color
         if(arrData[1] == 0){
-          fill_solid( &(leds[0]), NUM_LEDS /*number of leds*/, CHSV( arrData[2], arrData[3], arrData[4]));
+          fill_solid( &(leds[0]), ledLen /*number of leds*/, CHSV( arrData[2], arrData[3], arrData[4]));
           FastLED.show();
         }else{
-          fill_solid( &(leds[0]), NUM_LEDS /*number of leds*/, CRGB( arrData[2], arrData[3], arrData[4]));
+          fill_solid( &(leds[0]), ledLen /*number of leds*/, CRGB( arrData[2], arrData[3], arrData[4]));
           FastLED.show();
         }
         arrData[0] = 3; // go to standby
         break;
       case 13:  // EFFECT fade in fade out
-        fill_solid( &(leds[0]), NUM_LEDS /*number of leds*/, CHSV( 160, 255, map(arrData[1],0,100,0,255)));
+        fill_solid( &(leds[0]), ledLen /*number of leds*/, CHSV( 160, 255, map(arrData[1],0,100,0,255)));
         FastLED.show();
         arrData[0] = 3; // go to standby
         break;
@@ -231,14 +251,14 @@ void myDataCb(String& topic, String& data)
   if(data == "1" || data == "ON"){
     arrData[0] = 1;
     Serial.println("ON");
-    /*for(int i = 0; i < NUM_LEDS; i++){
+    /*for(int i = 0; i < ledLen; i++){
       fill_solid( &(leds[i]), 1, CRGB( 255, 255, 255));
     }
     FastLED.show(); */
   }else if(data == "0" || data == "OFF"){
     arrData[0] = 0;
     Serial.println("OFF");
-    /*for(int i = 0; i < NUM_LEDS; i++){
+    /*for(int i = 0; i < ledLen; i++){
       fill_solid( &(leds[i]), 1, CRGB( 0, 0, 0));
     }
     FastLED.show();   */ 
@@ -282,18 +302,18 @@ void parser(String data){
 
   if(arrData[0] == 50){
     LEDsOFF();
-    if(arrData[2] > (NUM_LEDS - arrData[1])){
-      arrData[2] = NUM_LEDS - arrData[1];
+    if(arrData[2] > (ledLen - arrData[1])){
+      arrData[2] = ledLen - arrData[1];
     }
   }else if(arrData[0] == 11){
-    if(arrData[3] > (NUM_LEDS - arrData[2])){
-      arrData[3] = NUM_LEDS - arrData[2];
+    if(arrData[3] > (ledLen - arrData[2])){
+      arrData[3] = ledLen - arrData[2];
     }
   }    
 }
 
 void LEDsOFF(){
-  fill_solid( &(leds[0]), NUM_LEDS /*number of leds*/, CRGB( 0, 0, 0));
+  fill_solid( &(leds[0]), ledLen /*number of leds*/, CRGB( 0, 0, 0));
   FastLED.show();
 }
 
@@ -323,10 +343,10 @@ void effect50(){
 
 void strobe(){
   while(arrData[0] == 4){
-    fill_solid( &(leds[0]), NUM_LEDS , CRGB(255, 255, 255));
+    fill_solid( &(leds[0]), ledLen , CRGB(255, 255, 255));
     FastLED.show();
     delay(20);
-    fill_solid( &(leds[0]), NUM_LEDS , CRGB(0, 0, 0));
+    fill_solid( &(leds[0]), ledLen , CRGB(0, 0, 0));
     FastLED.show();
     delay(20);
   }

@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt
 import time
-import cmd_config as config
+#import cmd_config as config  //uncommment if you want to use default config and comment out the line below
+import cmd_custom_config as config
 
 
 def on_connect(client, userdata, flags, rc):

@@ -14,8 +14,15 @@
 #define AP_PASS "ledconfig"
 #define BUTTON_PIN 0 //used to put ESP module into AP mode, if you want it to connect to a different network
 
+// EEPROM size used to initialize EEPROM space
+#define EEPROM_SIZE 5
+
+//EEPROM locations and data length
+#define nrLedsLen 5
+#define nrLedsAddr 0
+
 // LED strip settings
 #define MAX_CUR 13000
-#define NUM_LEDS 300 //will be removed when led setting from WiFiManager is stored in flash memory
+#define NUM_LEDS 300 //will only be used to set up array for fastLED library, so set the size as big as the longest LED strip will be
 #define LED_DATA_PIN 5 //D1, used to drive the LED strip
 
