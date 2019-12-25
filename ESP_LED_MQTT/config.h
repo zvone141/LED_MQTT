@@ -22,7 +22,8 @@
 #define nrLedsAddr 0
 
 // LED strip settings
-#define MAX_CUR 13000
+#define SINGLE_LED_CURRENT 60  //current of single WS2812B at RGB(255,255,255)
+#define MAX_CUR 13000 //MAX current allowed, set it so it's lower than what your power supply is capable of
 #define NUM_LEDS 300 //will only be used to set up array for fastLED library, so set the size as big as the longest LED strip will be
 #define LED_DATA_PIN 5 //D1, used to drive the LED strip
 

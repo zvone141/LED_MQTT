@@ -113,7 +113,9 @@ void setup() {
   memcpy(ledLenStr, readFromEEPROM(nrLedsLen,nrLedsAddr),nrLedsLen);
   ledLen = atoi(ledLenStr);
   FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, ledLen);
-
+  
+  // calculate current limit
+  curLimit = ledLen * SINGLE_LED_CURRENT;
   if(curLimit > MAX_CUR){
     curLimit = MAX_CUR;
   }
