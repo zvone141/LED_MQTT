@@ -113,10 +113,16 @@ void setup() {
   memcpy(ledLenStr, readFromEEPROM(nrLedsLen,nrLedsAddr),nrLedsLen);
   ledLen = atoi(ledLenStr);
   FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, ledLen);
-
+  
+  // calculate current limit
+  curLimit = ledLen * SINGLE_LED_CURRENT;
+  Serial.print("MAX current:");
+  Serial.println(curLimit);
   if(curLimit > MAX_CUR){
     curLimit = MAX_CUR;
   }
+  Serial.print("MAX current:");
+  Serial.println(curLimit);
   FastLED.setMaxPowerInVoltsAndMilliamps(5,curLimit);
 
   arrData[0] = 3; // go to standby
