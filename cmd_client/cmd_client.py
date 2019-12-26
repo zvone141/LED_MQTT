@@ -50,16 +50,17 @@ try:
     while True:
         print("\r\n")
         print("0 = OFF, 1 = ON, 2 = NIGHTMODE, 4 = command")
-        a = input("Input command:")
-        if a is 0:
+        a = str(input("Input command:"))
+   
+        if a is "0":
            client.publish(config.mqttConf['cmd_topic'], "0")
            client.publish("led/cmd/", "0")
-        elif a is 1:
+        elif a is "1":
             client.publish(config.mqttConf['cmd_topic'], "1")
             client.publish("led/cmd/", "1")
-        elif a is 2:
+        elif a is "2":
             client.publish(config.mqttConf['cmd_topic'], "2")
-        elif a is 4:
+        elif a is "4":
             c = input("command: ")
             client.publish(config.mqttConf['cmd_topic'], "%s"%(c))
     
