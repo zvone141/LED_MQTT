@@ -15,7 +15,7 @@
 #include "ESP_EEPROM.h"
 
 
-byte arrData[10];
+int arrData[10];
 byte espMAC[6];
 
 uint16_t curLimit = 13000;
