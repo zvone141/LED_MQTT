@@ -2,6 +2,8 @@ import paho.mqtt.client as mqtt
 import time
 #import cmd_config as config  //uncommment if you want to use default config and comment out the line below
 import cmd_custom_config as config
+import random
+import string
 
 
 def on_connect(client, userdata, flags, rc):
@@ -18,7 +20,7 @@ def on_message(client, userdata, msg):
     print("Command sent: ")
     print(msg.payload)
 
-client = mqtt.Client()
+client = mqtt.Client('cmd-'+(''.join([random.choice(string.ascii_letters + string.digits) for n in range(6)])))
 #client.username_pw_set("firefly", password="fireflytag8192")
 client.username_pw_set(config.mqttConf['user'], password=config.mqttConf['password'])
 client.on_connect = on_connect
