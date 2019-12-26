@@ -24,6 +24,7 @@ uint16_t ledLen = 50;
 char clientID[17];
 char response_topic[22];
 char status_topic[24];
+char macTopic[20];
 
 CRGB leds[NUM_LEDS];
 
@@ -53,12 +54,14 @@ void setup() {
   sprintf(clientID, "%s%02x%02x%02x%02x%02x%02x\0", MQTT_CLIENT_ID, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
   sprintf(response_topic, "%s%02x%02x%02x%02x%02x%02x\0", RESPONSE_TOPIC, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
   sprintf(status_topic, "%s%02x%02x%02x%02x%02x%02x\0", STATUS_TOPIC, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);
-
+  sprintf(macTopic, "%s%02x%02x%02x%02x%02x%02x\0", CMD_TOPIC, espMAC[0],espMAC[1],espMAC[2],espMAC[3],espMAC[4],espMAC[5]);  //Tis topic specific to MAC
+  
   myMqtt.setClientId(clientID);
   Serial.print("clientID: ");
   Serial.println(clientID);
   Serial.println(response_topic);
   Serial.println(status_topic);
+  Serial.println(macTopic);
 
 
   WiFiManager wifiManager;
@@ -105,7 +108,8 @@ void setup() {
   myMqtt.connect();
 
   Serial.println("subscribe to topic...");
-  myMqtt.subscribe(CMD_TOPIC);
+  //myMqtt.subscribe(CMD_TOPIC);
+  myMqtt.subscribe(macTopic); //<--- only subscribed to MAC topic
 
   //myMqtt.publish(status_topic, "led strip connected");
 
@@ -353,6 +357,3 @@ void strobe(){
     delay(20);
   }
 }
-
-
-
