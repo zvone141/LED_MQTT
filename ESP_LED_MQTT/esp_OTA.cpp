@@ -2,7 +2,7 @@
 
 void esp_OTA_begin(){
     ArduinoOTA.onStart([]() {
-    String type;
+    /*String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
       type = "sketch";
     } else { // U_FS
@@ -10,9 +10,10 @@ void esp_OTA_begin(){
     }
 
     // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-    Serial.println("Start updating " + type);
+    Serial.println("Start updating " + type);*/
+    Serial.println("Start");
     //Serial.end();
-    delay(100);
+    //delay(100);
   });
   ArduinoOTA.onEnd([]() {
     //Serial.begin(115200);
