@@ -96,7 +96,7 @@ void setup() {
   */
 
   // START ota
-  esp_OTA_begin();
+  esp_OTA_begin(clientID);
   Serial.println("Version: 0.2");
   Serial.println("Connecting to MQTT server");  
 

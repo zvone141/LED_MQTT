@@ -1,7 +1,9 @@
 #include "esp_OTA.h"
 
-void esp_OTA_begin(){
-    ArduinoOTA.onStart([]() {
+void esp_OTA_begin(char *hostname){
+  ArduinoOTA.setHostname(hostname);
+
+  ArduinoOTA.onStart([]() {
     /*String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
       type = "sketch";
