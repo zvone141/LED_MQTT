@@ -13,7 +13,8 @@ ESP8166 Arduino core --> [https://github.com/esp8266/Arduino](https://github.com
 5. MQTT.h --> [https://github.com/i-n-g-o/esp-mqtt-arduino](https://github.com/i-n-g-o/esp-mqtt-arduino)
 
 # To do list:
-- [ ] OTA
+- [x] OTA
+
 - [ ] Array command 
 - [ ] More effects
   - [ ] Rainbow (steady, moving-animation)
