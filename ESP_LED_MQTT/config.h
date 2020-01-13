@@ -27,3 +27,6 @@
 #define NUM_LEDS 300 //will only be used to set up array for fastLED library, so set the size as big as the longest LED strip will be
 #define LED_DATA_PIN 5 //D1, used to drive the LED strip
 
+// OTA enable
+// if you do not want espOTA comment out line below
+#define ESP_OTA

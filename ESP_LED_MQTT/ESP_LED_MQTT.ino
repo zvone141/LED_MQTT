@@ -10,9 +10,13 @@
 #include <FastLED.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
+#include <WiFiUdp.h>
 #include <WiFiManager.h>
 #include <MQTT.h>
 #include "ESP_EEPROM.h"
+#ifdef ESP_OTA
+#include "esp_OTA.h"
+#endif
 
 
 int arrData[10];
@@ -93,6 +97,11 @@ void setup() {
   Serial.println(WiFi.localIP());
   */
 
+  // START ota
+  #ifdef ESP_OTA
+  esp_OTA_begin(clientID);
+  #endif
+  Serial.println("Version: 0.2");
   Serial.println("Connecting to MQTT server");  
 
   // setup callbacks
@@ -131,8 +140,14 @@ void setup() {
 
 //
 void loop() {
+
+#ifdef ESP_OTA
+  // HANDLE OTA
+  ArduinoOTA.handle();
+#endif
+ //  If button is pressed go into AP mode so changes can be made
   if(digitalRead(BUTTON_PIN) == LOW){
-    WiFi.disconnect(true);
+    WiFi.disconnect(true); // Unfortunately if you want to change AP WiFi needs to disconnect, so whenever you put it into this mode you need to input WiFi settings again
     WiFiManager wifiManager;
     wifiManager.setSaveConfigCallback(saveConfigCallback);
     wifiManager.addParameter(&custom_led_len);
